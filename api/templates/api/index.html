@@ -1,0 +1,346 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>VocabApp | Panel nauki</title>
+    <link rel="stylesheet" href="{% static 'api/app.css' %}">
+    <script defer src="{% static 'api/app.js' %}"></script>
+</head>
+<body>
+    <main class="app-shell">
+        <section id="login-screen" class="login-screen">
+            <div class="login-copy">
+                <p class="eyebrow">VocabApp</p>
+                <h1>Najpierw konto, potem nauka.</h1>
+                <p>Po zalogowaniu aplikacja zapisuje Twoje wyniki, trudne słowa, powtórki i poziom opanowania każdego zestawu.</p>
+            </div>
+
+            <div class="auth-card panel">
+                <div class="panel-heading">
+                    <div>
+                        <p class="panel-kicker">Start</p>
+                        <h2>Logowanie i rejestracja</h2>
+                    </div>
+                    <span id="hero-auth-status" class="status-pill neutral">Gość</span>
+                </div>
+
+                <div id="guest-auth">
+                    <div class="tab-row" role="tablist" aria-label="Formularze konta">
+                        <button class="tab-button is-active" type="button" data-tab-target="login-form">Logowanie</button>
+                        <button class="tab-button" type="button" data-tab-target="register-form">Rejestracja</button>
+                    </div>
+
+                    <form id="login-form" class="auth-form">
+                        <label>
+                            Login
+                            <input type="text" name="username" autocomplete="username" placeholder="Twój login" required>
+                        </label>
+                        <label>
+                            Hasło
+                            <input type="password" name="password" autocomplete="current-password" placeholder="Twoje hasło" required>
+                        </label>
+                        <button type="submit" class="primary-button">Zaloguj się</button>
+                    </form>
+
+                    <form id="register-form" class="auth-form is-hidden">
+                        <label>
+                            Login
+                            <input type="text" name="username" autocomplete="username" placeholder="np. ola123" required>
+                        </label>
+                        <label>
+                            Hasło
+                            <input type="password" name="password" autocomplete="new-password" placeholder="Minimum kilka znaków" required>
+                        </label>
+                        <button type="submit" class="secondary-button">Załóż konto</button>
+                    </form>
+
+                    <div id="auth-feedback" class="feedback" aria-live="polite"></div>
+                </div>
+            </div>
+        </section>
+
+        <section id="dashboard-shell" class="dashboard-shell is-hidden">
+            <header class="topbar panel">
+                <div>
+                    <p class="panel-kicker">Panel Sterowania</p>
+                    <h1>Nauka słówek</h1>
+                </div>
+                <div id="account-summary" class="account-summary">
+                    <span>Zalogowano jako <strong id="current-user">-</strong></span>
+                    <span>Twoje zestawy: <strong id="set-count">0</strong></span>
+                    <span>Aktywny zestaw: <strong id="active-set-name">Brak</strong></span>
+                    <button id="logout-button" type="button" class="ghost-button">Wyloguj</button>
+                </div>
+            </header>
+
+            <nav class="mode-nav panel" aria-label="Przełącznik trybów nauki">
+                <button type="button" class="mode-button is-active" data-mode-target="sets-mode">Zestawy</button>
+                <button type="button" class="mode-button" data-mode-target="flashcards-mode">Fiszki</button>
+                <button type="button" class="mode-button" data-mode-target="typing-mode">Wpisywanie</button>
+                <button type="button" class="mode-button" data-mode-target="quiz-mode">Quiz</button>
+                <button type="button" class="mode-button" data-mode-target="stats-mode">Statystyki</button>
+            </nav>
+
+            <div class="workspace-layout">
+                <aside class="panel sidebar-panel">
+                    <div class="panel-heading compact-heading">
+                        <div>
+                            <p class="panel-kicker">Zestawy</p>
+                            <h2>Dostępne materiały</h2>
+                        </div>
+                        <button id="refresh-sets" type="button" class="ghost-button">Odśwież</button>
+                    </div>
+                    <label class="set-search">
+                        Szukaj zestawu
+                        <input id="set-search-input" type="text" placeholder="Wpisz nazwę zestawu">
+                    </label>
+                    <div id="sets-list" class="sets-list empty-state">Pobieram zestawy...</div>
+                    <div id="create-set-gate" class="auth-gate is-hidden"></div>
+                </aside>
+
+                <section class="workspace-main">
+                    <div id="study-empty" class="panel empty-state large-empty">
+                        Wybierz zestaw, aby uruchomić fiszki, wpisywanie, quiz i statystyki.
+                    </div>
+
+                    <div id="study-content" class="is-hidden">
+                        <section class="panel dashboard-panel">
+                            <div class="dashboard-header">
+                                <div>
+                                    <p class="panel-kicker">Aktywny Zestaw</p>
+                                    <h2 id="selected-set-title">-</h2>
+                                </div>
+                                <span id="selected-set-badge" class="status-pill neutral">Brak zestawu</span>
+                            </div>
+
+                            <div class="stats-grid">
+                                <article class="metric-card">
+                                    <p class="panel-kicker">Słówka</p>
+                                    <strong id="stat-word-count">0</strong>
+                                    <span>Wszystkie pary w zestawie.</span>
+                                </article>
+                                <article class="metric-card">
+                                    <p class="panel-kicker">Opanowanie</p>
+                                    <strong id="stat-mastery">0%</strong>
+                                    <span id="stat-mastery-label">Brak danych</span>
+                                </article>
+                                <article class="metric-card">
+                                    <p class="panel-kicker">Do powtórki</p>
+                                    <strong id="stat-review-count">0</strong>
+                                    <span>Trudne lub częściej mylone słowa.</span>
+                                </article>
+                            </div>
+
+                            <p id="next-step-title" class="next-step-title">Wybierz tryb nauki z panelu.</p>
+                            <p id="next-step-copy" class="section-copy">Postępy zapisują się automatycznie po quizie i po sprawdzaniu wpisywanych odpowiedzi.</p>
+                        </section>
+
+                        <section id="sets-mode" class="mode-panel panel">
+                            <div class="panel-heading compact-heading">
+                                <div>
+                                    <p class="panel-kicker">Osobno Dla Zestawów</p>
+                                    <h2>Dodawanie i edycja materiału</h2>
+                                </div>
+                            </div>
+
+                            <div class="split-grid">
+                                <div>
+                                    <form id="set-form" class="set-form">
+                                        <label>
+                                            Nazwa zestawu
+                                            <input type="text" name="name" placeholder="np. Angielski podróże" required>
+                                        </label>
+                                        <label class="toggle">
+                                            <input type="checkbox" name="public" checked>
+                                            <span>Publiczny zestaw</span>
+                                        </label>
+                                        <div class="builder-heading">
+                                            <div>
+                                                <p class="panel-kicker">Słówka startowe</p>
+                                                <h3>Pary PL -> EN</h3>
+                                            </div>
+                                            <button id="add-word-row" type="button" class="ghost-button">Dodaj parę</button>
+                                        </div>
+                                        <div id="word-rows" class="word-rows"></div>
+                                        <button type="submit" class="primary-button">Utwórz zestaw</button>
+                                    </form>
+                                    <div id="set-feedback" class="feedback" aria-live="polite"></div>
+                                </div>
+
+                                <div>
+                                    <div id="add-word-gate" class="empty-state">Wybierz własny zestaw, aby dodawać słowa.</div>
+                                    <form id="add-word-form" class="stack-form is-hidden">
+                                        <p id="add-word-context" class="section-copy"></p>
+                                        <label>
+                                            Polski
+                                            <input type="text" name="pl" placeholder="np. pies">
+                                        </label>
+                                        <label>
+                                            Angielski
+                                            <input type="text" name="en" placeholder="np. dog">
+                                        </label>
+                                        <button type="submit" class="secondary-button">Dodaj słówko</button>
+                                    </form>
+                                    <div id="add-word-feedback" class="feedback" aria-live="polite"></div>
+
+                                    <div class="tool-divider"></div>
+
+                                    <div id="import-gate" class="empty-state">Wybierz własny zestaw, aby importować plik.</div>
+                                    <form id="import-form" class="stack-form is-hidden" enctype="multipart/form-data">
+                                        <p id="import-context" class="section-copy"></p>
+                                        <label>
+                                            Plik CSV lub JSON
+                                            <input type="file" name="file" accept=".csv,.json">
+                                        </label>
+                                        <button type="submit" class="ghost-button">Importuj słówka</button>
+                                    </form>
+                                    <div id="import-feedback" class="feedback" aria-live="polite"></div>
+                                </div>
+                            </div>
+
+                            <div class="subpanel">
+                                <div class="panel-heading compact-heading">
+                                    <div>
+                                        <p class="panel-kicker">Słowa i postępy</p>
+                                        <h3>Podgląd zestawu</h3>
+                                    </div>
+                                </div>
+                                <div class="table-wrap">
+                                    <table class="words-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Polski</th>
+                                                <th>Angielski</th>
+                                                <th>Skuteczność</th>
+                                                <th>Status</th>
+                                                <th>Akcja</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="words-table-body"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section id="flashcards-mode" class="mode-panel panel is-hidden">
+                            <div class="panel-heading compact-heading">
+                                <div>
+                                    <p class="panel-kicker">Fiszki</p>
+                                    <h2>Powtarzaj karta po karcie</h2>
+                                </div>
+                                <button id="review-flashcards" type="button" class="ghost-button">Tylko do powtórki</button>
+                            </div>
+                            <div id="flashcards-empty" class="empty-state">Wybierz zestaw z przynajmniej jednym słówkiem.</div>
+                            <div id="flashcards-content" class="is-hidden">
+                                <button id="flashcard-card" type="button" class="flashcard-surface">
+                                    <span id="flashcard-side-label" class="panel-kicker">Angielski</span>
+                                    <strong id="flashcard-value">-</strong>
+                                    <p id="flashcard-subtitle">Kliknij kartę, żeby zobaczyć tłumaczenie po polsku.</p>
+                                </button>
+                                <div class="flashcard-actions">
+                                    <button id="prev-flashcard" type="button" class="ghost-button">Do powtórki</button>
+                                    <button id="flip-flashcard" type="button" class="secondary-button">Obróć</button>
+                                    <button id="flashcard-hard-button" type="button" class="ghost-button">Oznacz jako trudne</button>
+                                    <button id="next-flashcard" type="button" class="ghost-button">Opanowane</button>
+                                </div>
+                                <p id="flashcard-progress" class="section-copy">Przesuń w lewo: do powtórki. Przesuń w prawo: opanowane.</p>
+                            </div>
+                        </section>
+
+                        <section id="typing-mode" class="mode-panel panel is-hidden">
+                            <div class="panel-heading compact-heading">
+                                <div>
+                                    <p class="panel-kicker">Wpisywanie</p>
+                                    <h2>Sprawdź odpowiedź z klawiatury</h2>
+                                </div>
+                            </div>
+                            <div id="typing-empty" class="empty-state">Wybierz zestaw z przynajmniej jednym słówkiem.</div>
+                            <form id="typing-form" class="stack-form is-hidden">
+                                <p id="typing-context" class="typing-prompt">-</p>
+                                <label>
+                                    Twoja odpowiedź po angielsku
+                                    <input type="text" name="answer" placeholder="np. dog" autocomplete="off">
+                                </label>
+                                <div class="inline-actions">
+                                    <button type="submit" class="secondary-button">Sprawdź</button>
+                                    <button id="next-typing-word" type="button" class="ghost-button">Następne słowo</button>
+                                </div>
+                            </form>
+                            <div id="typing-feedback" class="feedback" aria-live="polite"></div>
+                        </section>
+
+                        <section id="quiz-mode" class="mode-panel panel is-hidden">
+                            <div class="panel-heading compact-heading">
+                                <div>
+                                    <p class="panel-kicker">Quiz</p>
+                                    <h2>Sprawdź, ile pamiętasz</h2>
+                                </div>
+                                <p class="section-copy">Quiz wymaga minimum 4 słówek.</p>
+                            </div>
+                            <div id="quiz-gate" class="empty-state">Wybierz zestaw i dodaj co najmniej 4 słówka.</div>
+                            <div id="quiz-builder" class="is-hidden">
+                                <form id="quiz-form" class="quiz-form">
+                                    <label>
+                                        Nazwa quizu
+                                        <input type="text" name="name" placeholder="np. Powtórka z podróży">
+                                    </label>
+                                    <button type="submit" class="primary-button">Generuj quiz</button>
+                                </form>
+                                <div id="quiz-feedback" class="feedback" aria-live="polite"></div>
+                                <div id="quiz-render" class="quiz-render"></div>
+                            </div>
+                        </section>
+
+                        <section id="stats-mode" class="mode-panel panel is-hidden">
+                            <div class="panel-heading compact-heading">
+                                <div>
+                                    <p class="panel-kicker">Statystyki Nauki</p>
+                                    <h2>Postępy użytkownika</h2>
+                                </div>
+                            </div>
+                            <div class="stats-grid wide-stats">
+                                <article class="metric-card">
+                                    <p class="panel-kicker">Quizy</p>
+                                    <strong id="stat-quiz-correct">0/0</strong>
+                                    <span id="stat-quiz-rate">0% skuteczności</span>
+                                </article>
+                                <article class="metric-card">
+                                    <p class="panel-kicker">Odpowiedzi</p>
+                                    <strong id="stat-flashcard-rate">0%</strong>
+                                    <span id="stat-answer-count">0 zapisanych odpowiedzi</span>
+                                </article>
+                                <article class="metric-card">
+                                    <p class="panel-kicker">Trudne</p>
+                                    <strong id="stat-hard-count">0</strong>
+                                    <span>Oznaczone ręcznie jako trudne.</span>
+                                </article>
+                                <article class="metric-card">
+                                    <p class="panel-kicker">Poziom zestawu</p>
+                                    <strong id="stat-mastery-detail">0%</strong>
+                                    <span id="stat-mastery-detail-label">Brak danych</span>
+                                </article>
+                            </div>
+                        </section>
+                    </div>
+                </section>
+            </div>
+        </section>
+    </main>
+
+    <template id="word-row-template">
+        <div class="word-row">
+            <label>
+                Polski
+                <input type="text" name="pl" placeholder="np. lotnisko">
+            </label>
+            <label>
+                English
+                <input type="text" name="en" placeholder="np. airport">
+            </label>
+            <button type="button" class="remove-row-button" aria-label="Usuń wiersz">Usuń</button>
+        </div>
+    </template>
+</body>
+</html>
